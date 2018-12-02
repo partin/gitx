@@ -31,10 +31,87 @@ function ask($options) {
   }
 }
 
+function gitx-branch {
+	$branches = [System.Array]( git branch --no-color )
+	$script:num = $branches.length
+	$script:items = New-Object String[] $script:num
+	for ($i = 0; $i -lt $script:num; ++$i) {
+		$script:items[$i] = $branches[$i].substring(2)
+		if ($branches[$i].substring(0,1) -eq '*') {
+			$script:index = $i
+		}
+	}
+
+	for ($i = 0; $i -lt $script:num; ++$i) {
+		if ( $script:index -eq $i ) {
+			write-host $branches[$i] -BackgroundColor $fgc -ForegroundColor $bgc
+		}
+		else {
+			write-host $branches[$i] -BackgroundColor $bgc -ForegroundColor $fgc
+		}
+	}
+
+	$script:endY = [console]::CursorTop
+	$script:beginY = $script:endY - $script:num
+
+	for (;;) {
+		[console]::setcursorposition(0, $script:beginY + $index)
+		write-host $branches[$index] -BackgroundColor $fgc -ForegroundColor $bgc -NoNewline
+
+		$key = $host.ui.rawui.readkey("NoEcho,IncludeKeyDown")
+		$vkeycode = $key.virtualkeycode
+		$old = $index
+
+		if ($vkeycode -eq 27 -or $vkeycode -eq [int32][char]'Q') {
+			[console]::setcursorposition(0, $script:endY)
+			break done;
+		}
+		elseif ($vkeycode -eq 38) {
+			if ($index -gt 0) {
+				$index--
+			}
+		}
+		elseif ($vkeycode -eq 40) {
+			if ($index -lt $num - 1) {
+				$index++
+			}
+		}
+		elseif ($vkeycode -eq 33) {
+			if ($index -gt 15) {
+				$index -= 15
+			} else {
+				$index = 0
+			}
+		}
+		elseif ($vkeycode -eq 34) {
+			if ($index -lt $num - 15 - 1 ) {
+				$index += 15
+			} else {
+				$index = $num - 1
+			}
+		}
+		elseif ($vkeycode -eq 13 ) {
+			[console]::setcursorposition(0, $script:beginY + $index)
+			write-host $branches[$index] -BackgroundColor $bgc -ForegroundColor $fgc -NoNewline
+			[console]::setcursorposition(0, $endY)
+			git checkout $script:items[$index]
+			return
+		}
+
+		if ($index -ne $old) {
+			[console]::setcursorposition(0, $script:beginY + $old)
+			write-host $branches[$old] -BackgroundColor $bgc -ForegroundColor $fgc -NoNewline
+		}
+	}
+}
+
 $bgc = [console]::BackgroundColor
 $fgc = [console]::ForegroundColor
 
-$script:beginY = [console]::CursorTop
+if ($args[0] -eq 'branch') {
+	gitx-branch $args
+	return
+}
 
 $groups = @(
   @{key="c"; cmd="git commit"; },
@@ -80,7 +157,7 @@ function print-list {
 
 function reload {
 	read-git-status
-	#[console]::setcursorposition(0,$beginY)
+	#[console]::setcursorposition(0,$script:beginY)
 	print-list
 	$script:endY = [console]::CursorTop
 }
@@ -88,10 +165,10 @@ function reload {
 reload
 
 $index = $script:num - 1
-$saveY = $script:endY - $script:num
+$script:beginY = $script:endY - $script:num
 
 for (;;) {
-	[console]::setcursorposition(0, $saveY + $index) 
+	[console]::setcursorposition(0, $script:beginY + $index)
 	write-host ( item-text $index ) -BackgroundColor $fgc -ForegroundColor $bgc -NoNewline
 
 	$key = $host.ui.rawui.readkey("NoEcho,IncludeKeyDown")
@@ -158,7 +235,7 @@ for (;;) {
 					Invoke-Expression $cmd
 					for ($i = 0; $i -lt $indexes.length; ++$i) {
 						update-git-status $indexes[$i]
-						[console]::setcursorposition(0,$saveY+$indexes[$i])
+						[console]::setcursorposition(0,$script:beginY+$indexes[$i])
 						write-host ( item-text $indexes[$i] ) -BackgroundColor $bgc -ForegroundColor $fgc -NoNewline
 					}
 #				}
@@ -167,7 +244,7 @@ for (;;) {
 	}
 
 	if ($index -ne $old) {
-		[console]::setcursorposition(0, $saveY + $old)
+		[console]::setcursorposition(0, $script:beginY + $old)
 		write-host (item-text $old) -BackgroundColor $bgc -ForegroundColor $fgc -NoNewline
 	}
 }
