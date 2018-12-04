@@ -92,6 +92,12 @@ function gitx-branch {
 				$script:index = $script:num - 1
 			}
 		}
+		elseif ($vkeycode -eq 36) {
+			$script:index = 0
+		}
+		elseif ($vkeycode -eq 35) {
+			$script:index = $script:num - 1
+		}
 		elseif ($vkeycode -eq 13 ) {
 			[console]::setcursorposition(0, $script:beginY + $script:index)
 			write-host $branches[$script:index] -BackgroundColor $bgc -ForegroundColor $fgc -NoNewline
@@ -178,6 +184,11 @@ function reload {
 
 reload
 
+if ( $script:num -eq 0 ) {
+	git status
+	return
+}
+
 for (;;) {
 	[console]::setcursorposition(0, $script:beginY + $script:index)
 	write-host ( item-text $script:index ) -BackgroundColor $fgc -ForegroundColor $bgc -NoNewline
@@ -216,6 +227,12 @@ for (;;) {
 			$script:index = $script:num - 1
 		}
 	}
+	elseif ($vkeycode -eq 36) {
+		$script:index = 0
+	}
+	elseif ($vkeycode -eq 35) {
+		$script:index = $script:num - 1
+	}
 	elseif ($groups.key.contains([string]$key.Character)) {
 		if ($script:items[$script:index].action -eq $key.Character) {
 			$script:items[$script:index].action = ' '
@@ -233,11 +250,16 @@ for (;;) {
 	elseif ($vkeycode -eq ([int32][char]'O')) {
 		if ( $dte -ne 0 ) {
 			$file = Split-Path $script:items[$script:index].file -leaf
-			### open file
+			$dte.ExecuteCommand("File.OpenFile", $file)
 		}
 	}
 	elseif ($vkeycode -eq ([int32][char]'D')) {
-		git difftool $script:items[$script:index].file
+		if ( $script:items[$script:index].status[1] -eq ' ' ) {
+			git difftool --staged $script:items[$script:index].file
+		}
+		else {
+			git difftool $script:items[$script:index].file
+		}
 	}
 	elseif ($vkeycode -eq ([int32][char]'C')) {
 		$script:items[$script:index].file | clip
